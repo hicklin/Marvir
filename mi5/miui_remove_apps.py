@@ -88,7 +88,7 @@ apps = [
 }]
 
 
-def count_remove(apps, remove=True):
+def count_remove(remove=True):
     ret = 0
     for app in apps:
         if app["remove"] == remove:
@@ -101,8 +101,8 @@ def print_app(app):
 
 
 def print_apps():
-    to_remove = count_remove(apps, True)
-    to_keep = count_remove(apps, False)
+    to_remove = count_remove(True)
+    to_keep = count_remove(False)
     if to_remove != 0:
         print("\nApps to remove: %i" % to_remove)
         for app in apps:
@@ -120,28 +120,26 @@ def remove_apps():
     success = []
     not_installed = []
     fails = []
-    to_remove = count_remove(apps, True)
 
     for i, app in enumerate(apps):
-        if app["remove"]:
-            command = "%s shell pm uninstall --user %i %s" % (ADB_PATH, USER, app["index"])
-            if VERBOSE:
-                print("Executing command: %s" % command)
-            else:
-                sys.stdout.write("[%-*s]\r" % (to_remove, "#"*i))
-                sys.stdout.flush()
+        command = "%s shell pm uninstall --user %i %s" % (ADB_PATH, USER, app["index"])
+        if VERBOSE:
+            print("Executing command: %s" % command)
+        else:
+            sys.stdout.write("[%-*s]\r" % (to_remove, "#"*i))
+            sys.stdout.flush()
 
-            if not FAKE:
-                out = subprocess.Popen([command], shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-                result = out.communicate()[0]
-                if result == "Success":
-                    success.append("%s" % app["name"])
-                elif "not installed" in result:
-                    not_installed.append("%s" % app["name"])
-                else:
-                    fails.append("%s: %s" % (app["name"], result))
+        if not FAKE:
+            out = subprocess.Popen([command], shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            result = out.communicate()[0]
+            if result == "Success":
+                success.append("%s" % app["name"])
+            elif "not installed" in result:
+                not_installed.append("%s" % app["name"])
             else:
-                print("Fake!")
+                fails.append("%s: %s" % (app["name"], result))
+        else:
+            print("Fake!")
 
     if success:
         print("Successfully removed %i apps:" % len(success))
@@ -188,6 +186,15 @@ if __name__ == "__main__":
     print_apps()
 
     agreed = raw_input("Continue? [y/N]: " or "N")
+
+    # Remove apps to be kept from the list
+    to_remove = count_remove(True)
+    if to_remove != len(apps):
+        new_apps = []
+        for app in apps:
+            if app["remove"]:
+                new_apps.append(app)
+        apps = new_apps
 
     if agreed.lower() not in ["y", "yes"]:
         print("Exiting!")
